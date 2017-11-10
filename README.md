@@ -3,10 +3,18 @@ AS2TS
 
 Convert `ActionScript 3` to `TypeScript` using pure HTML5.
 
-Try it: 
+修改
 ---
+hello.js 用来处理更复杂的转换使用方式：
 
-http://www.nshen.net/as2ts/
+```shell
+node hello.js E:\scrpits\tools\p1\moved\laya\resource\Context.ts
+```
+
+修改的内容
+- 增加 static 变量 Laya.stage。
+- 修改 import
+- 自动去掉函数后面的 public set foo():void 
 
 Conversion:
 ---
