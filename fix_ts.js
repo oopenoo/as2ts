@@ -31,6 +31,49 @@ let memeber_add_this = function(buf, mname) {
     return buf;
 }
 
+let parse_property = function(buf) {
+    var property = {};
+    var static_pro = new Array();
+    let pos = 0;
+    let reg = null;
+    let result = null;
+
+    reg = /(?:private|public|protected)\s+((?:static)\s)*((?:get|set)\s)*(\w+)\(.*{/g;
+    while ((result = reg.exec(buf)) != null)  {
+        var mb = result[3];
+        if ( typeof(result[1]) !== 'undefined' ) {
+            static_pro.push(mb);
+        } else if ( typeof(result[2]) !== 'undefined' ) {
+            property[mb] = 1;
+        } else {
+            property[mb] = 1;
+        }
+        console.log(mb + " | " + result[1] + "|" + result[2]);
+    }
+    reg = /(?:private|public|protected)\s*(static\s+)*(\w+):\w+.*;/g;
+    while ((result = reg.exec(buf)) != null)  {
+        var mb = result[2];
+        if ( typeof(result[1]) !== 'undefined' ) {
+            static_pro.push(mb);
+        } else {
+            property[mb] = 1;
+        }
+        pos = Math.max(pos,reg.lastIndex);
+    };
+
+
+    console.log( " pos=" + pos + " match:" );
+    let ret = new Object;
+
+    ret.pos = pos;
+    ret.static_pro = static_pro;
+    ret.property = new Array();
+    for (let name in property) {
+        ret.property.push(name);
+    }
+    return ret;
+};
+    
 let convert = function (str) {
     var reg = /demo/g;
     var result;
@@ -54,26 +97,13 @@ let convert = function (str) {
     str = str.replace(reg, "import $2 = $1$2;");
     
     var pos = 0;
-    var arr = new Array();
-    reg = /(?:private|public|protected)\s*static\s+(\w+):\w+.*;/g;
-    while ((result = reg.exec(str)) != null)  {
-        var mb = result[1];
-        arr.push(mb);
-        pos = Math.max(pos,reg.lastIndex);
-    }
+
+    let info = parse_property(buf);
+    var arr = info.static_pro;
+    var memebers = info.property;
+
+    pos = info.pos;
     // console.log( " pos=" + pos );
-
-    var memebers = new Array();
-    reg = /(?:private|public|protected)\s+(\w+):\w+.*;/g;
-    while ((result = reg.exec(str)) != null)  {
-        var mb = result[1];
-        memebers.push(mb);
-        pos = Math.max(pos,reg.lastIndex);
-    }
-    console.log( " pos=" + pos );
-
-
-
 
     // module    
     str = str.replace(/([^\\n]*)module {/, "$1module laya {");
@@ -133,24 +163,58 @@ function main() {
     console.log( '' );
 }
 
-function foo1()
-{
-    let buf = `
-    public set cacheAsBitmap(value:boolean):void {
-        //TODO:去掉关联
-        cacheAs = value ? (_$P["hasFilter"] ? "none" : "normal") : "none";
-        if (cacheAs == "good") {
+let foo_test_buff = `
+/** @private */
+private static CustomList:any[] = [];
+/**@private 矩阵变换信息。*/
+protected _transform:Matrix;
+/**@private */
+protected _tfChanged:boolean;
+/**@private */
+protected _x:number = 0;
+/**@private */
+private static RUNTIMEVERION:string = __JS__("window.conch?conchConfig.getRuntimeVersion().substr(conchConfig.getRuntimeVersion().lastIndexOf('-')+1):''");
 
-        }
+/**@private */
+public createConchModel():any {
+    return __JS__("new ConchNode()");
+}
+
+public set cacheAsBitmap(value:boolean):void {
+    //TODO:去掉关联
+    cacheAs = value ? (_$P["hasFilter"] ? "none" : "normal") : "none";
+    if (cacheAs == "good") {
+
     }
-    public get cacheAs():string {
-        return _$P.cacheCanvas == null ? "none" : _$P.cacheCanvas.type;
-    }
-    public set cacheAs(value:string):void {
-    }
+}
+public get cacheAs():string {
+    return _$P.cacheCanvas == null ? "none" : _$P.cacheCanvas.type;
+}
+public set cacheAs(value:string):void {
+}
+/**@inheritDoc */
+public destroy(destroyChild:boolean = true):void {
+    this._releaseMem();
+    super.destroy(destroyChild);
+    this._style && this._style.destroy();
+    this._transform && this._transform.destroy();
+    this._transform = null;
+    this._style = null;
+    this._graphics = null;
     this.cacheAs = 1;
     if (value == "bitmap") conchModel && conchModel.cacheAs(1);
-    `;
+}
+public static fromImage(url:string):Sprite {
+    return new Sprite().loadImage(url);
+}
+`;
+
+function foo1()
+{
+    let buf = foo_test_buff;
+    
+    
+    /*
     let mname = 'cacheAs';
     let patt;
 
@@ -165,5 +229,29 @@ function foo1()
     console.log( buf.match(patt) );
     buf = buf.replace(patt, "$1this.$2$3");
     console.log( buf );
+*/
+
 }
+
+function foo2()
+{
+    let buf = foo_test_buff;
+    let info = parse_property(buf);
+    let funcs; 
+    console.log("\n------------------\n static functions:");
+    funcs = info.static_pro;
+    for (let i = 0; i < funcs.length; i++)
+    {
+        let func_name = funcs[i];
+        console.log(func_name);
+    }
+    console.log("\n------------------\n property:");
+    funcs = info.property;
+    for (let i = 0; i < funcs.length; i++)
+    {
+        let func_name = funcs[i];
+        console.log(func_name);
+    }
+}
+// foo2();
 main();
